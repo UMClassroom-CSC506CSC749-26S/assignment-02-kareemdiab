@@ -1,0 +1,193 @@
+% Base types
+tff(species_type,type,
+    species: $tType ).
+
+tff(foodlink_type,type,
+    foodlink: $tType ).
+
+tff(foodchain_type,type,
+    foodchain: $tType ).
+
+% Functors
+tff(eater_type,type,
+    eater: foodlink > species ).
+
+tff(eaten_type,type,
+    eaten: foodlink > species ).
+
+% Predicates
+tff(eats_type,type,
+    eats: ( species * species ) > $o ).
+
+tff(primary_producer_type,type,
+    primary_producer: species > $o ).
+
+tff(apex_predator_type,type,
+    apex_predator: species > $o ).
+
+tff(start_of_type,type,
+    start_of: ( species * foodchain ) > $o ).
+
+tff(end_of_type,type,
+    end_of: ( species * foodchain ) > $o ).
+
+tff(complete_foodchain_type,type,
+    complete_foodchain: foodchain > $o ).
+
+tff(depends_type,type,
+    depends: ( species * species ) > $o ).
+
+%Axioms
+tff(link_eater,axiom,
+    ! [L: foodlink] : eats(eater(L),eaten(L)) ).
+
+tff(no_cannibalism,axiom,
+    ! [L: foodlink] : ( eater(L) != eaten(L) ) ).
+
+tff(everyone_eats,axiom,
+    ! [S: species] :
+      ( ? [S1: species] : eats(S,S1)
+      | ? [S2: species] : eats(S2,S) ) ).
+
+tff(primary_producer_def,axiom,
+    ! [S: species] :
+      ( primary_producer(S)
+    <=> ! [S1: species] : ~ eats(S,S1) ) ).
+
+tff(primary_producer_no_food_link, conjecture,
+    ! [S: species] :
+      ( primary_producer(S)
+        =>
+        ( ! [L: foodlink] :
+            eater(L) != S
+        )
+      ) ).
+
+tff(primary_producer_gets_eaten, conjecture,
+    ! [S: species] :
+      ( primary_producer(S)
+        =>
+       ( ?  [S1: species] : eats(S1, S) ) ) ).
+
+
+tff(not_primary_producer_eats, conjecture,
+    ! [S: species] :
+      ( ~primary_producer(S)
+        =>
+       ( ?  [S1: species] : eats(S, S1) ) ) ).
+
+tff(apex_predator_axiom,axiom,
+    ! [S: species] :
+      ( apex_predator(S)
+    <=> ! [S1: species] : ~ eats(S1,S) ) ).
+
+tff(apex_not_eaten_of_foodlink,conjecture,
+    ! [S: species] :
+      ( apex_predator(S)
+     => ! [L: foodlink] : ( eaten(L) != S ) ) ).
+
+tff(every_apex_eats,conjecture,
+    ! [S: species] :
+      ( apex_predator(S)
+     => ? [S1: species] : eats(S,S1) ) ).
+
+tff(not_apex_gets_eaten,conjecture,
+    ! [S: species] :
+      ( ~ apex_predator(S)
+     => ? [S1: species] : eats(S1,S) ) ).
+
+tff(food_chain_big_axiom,axiom,
+  ! [C: foodchain] :
+    ? [S0: species, Se: species] :
+      ( start_of(S0,C)
+      & end_of(Se,C)
+      &
+      ( eats(Se,S0)
+        |
+        ? [Sm: species] :
+            ( eats(Sm,S0)
+            & eats(Se,Sm) ) ) ) ).
+
+tff(no_death_spirals,axiom,
+    ! [C: foodchain,S: species] :
+      ( ~ start_of(S,C)
+      | ~ end_of(S,C) ) ).
+
+tff(complete_chain_axiom,axiom,
+    ! [C: foodchain,S: species] :
+      ( complete_foodchain(C)
+     => ( ( ~ start_of(S,C)
+          | primary_producer(S) )
+        & ( ~ end_of(S,C)
+          | apex_predator(S) ) ) ) ).
+
+tff(every_species_in_complete_chain,axiom,
+    ! [S: species] :
+    ? [C: foodchain] :
+      ( complete_foodchain(C)
+      & ( ( start_of(S,C)
+          & primary_producer(S) )
+        | ( end_of(S,C)
+          & apex_predator(S) )
+        | ( ~ start_of(S,C)
+          & ~ end_of(S,C)
+          & ? [C1: foodchain,C2: foodchain,S0: species,Se: species] :
+              ( ~ complete_foodchain(C1)
+              & ~ complete_foodchain(C2)
+              & start_of(S0,C)
+              & end_of(Se,C)
+              & start_of(S0,C1)
+              & end_of(S,C1)
+              & start_of(S,C2)
+              & end_of(Se,C2) ) ) ) ) ). 
+              
+tff(no_complete_foodchain_loops,conjecture,
+    ! [C: foodchain,S1: species,S2: species] :
+      ( ( complete_foodchain(C)
+        & start_of(S1,C)
+        & end_of(S2,C) )
+     => ~ eats(S1,S2) ) ).
+
+tff(in_middle_of_foodchain,conjecture,
+    ! [S: species] :
+      ( ( ~ primary_producer(S)
+        & ~ apex_predator(S) )
+     => ? [C1: foodchain,C2: foodchain,S0: species,Se: species] :
+          ( primary_producer(S0)
+          & start_of(S0,C1)
+          & end_of(S,C1)
+          & start_of(S,C2)
+          & end_of(Se,C2)
+          & apex_predator(Se) ) ) ).
+
+tff(depends_def,axiom,
+    ! [S1: species,S2: species] :
+      ( depends(S1,S2)
+    <=> ? [C: foodchain] :
+          ( start_of(S2,C)
+          & end_of(S1,C) ) ) ).
+
+tff(apex_predator_depends,conjecture,
+    ! [S: species] :
+      ( ~ apex_predator(S)
+     => ? [Se: species] :
+          ( depends(Se,S)
+          & apex_predator(Se) ) ) ).
+
+tff(apex_depends_on_all_producers, conjecture,
+  ! [S: species] :
+    ( apex_predator(S)
+      =>
+      ! [C: foodchain] :
+        ( complete_foodchain(C)
+          & end_of(S,C)
+          =>
+          ? [S0: species] :
+            ( primary_producer(S0)
+            & start_of(S0,C)
+            & depends(S, S0)
+            )
+        )
+    )
+).
+
